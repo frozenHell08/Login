@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Account;
-use App\Http\Requests\StoreAccountRequest;
-use App\Http\Requests\UpdateAccountRequest;
+use Illuminate\Http\Request;
+use App\Exceptions\AccountException;
+
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
 {
-    public function index()
+    public function index() //working w/ pagination
     {
         $accounts = Account::paginate(request()->all());
 
@@ -24,18 +27,23 @@ class AccountController extends Controller
         ], 200);
     }
 
-    public function store(StoreAccountRequest $request)
+    public function store(Request $request) //working
     {
-        $account = Account::where('username', $request->username)
-                ->orWhere('email', $request->email)
-                ->first();
+        $validator = Validator::make($request->all(), [
+            'firstname' => ['required', 'max:255'],
+            'lastname' => ['required', 'max:255'],
+            'username' => ['required', 'max:255', 'unique:accounts'],
+            'email' => ['required', 'email', 'max:255', 'unique:accounts'],
+            'password' => ['required', 'min:8', 'max:255'],
+        ]);
 
-        // return ($account);
+        if ($validator->fails()) {
+            return response()->json([
+                'errors' => $validator->errors(),
+            ], 422);
+        }
 
-        // ($account) ? $s = "true" : $s = "false";
-        ($account) ?  
-            throw new AccountResponseException("Username / Email already exists.", 422) : 
-            $account = Account::create($request->all()); 
+        $account = Account::create($request->all());
 
         return response()->json([
             'message' => "Account has been registered.",
@@ -43,64 +51,53 @@ class AccountController extends Controller
         ], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show($id)
-    {
-        // try {
-            $account = Account::find($id);
-
-            if ($account) {
-                return response()->json([
-                    'message' => "Displaying account details.",
-                    'account' => $account
-                ], 200);
-            }
-
-            // return response()->json([
-            //     'error' => 'eww'
-            // ], 404);
-        // } catch (Exception $ex) {
-            // abort(500, 'Could not create office or assign');
-        // }
-
-        // $account = Account::find($id);
-
-        // if ($account) {
-        //     return response()->json([
-        //         'message' => "Displaying account details.",
-        //         'account' => $account
-        //     ], 200);
-        // }
-
-        // throw new AccountResponseException("Account cannot be found.", 404);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateAccountRequest $request, Account $account)
+    public function show(Request $request, string $id) // working
     {
         $account = Account::find($id);
 
-        is_null($account) ? throw new AccountResponseException("The account does not exist", 404) :
-            $account->update($request->all());
+        if ($account) {
+            return response()->json([
+                'message' => "Displaying account details.",
+                'account' => $account,
+            ], 200);
+        }
 
+        throw new AccountException("Account cannot be found.", 404);
+    }
+
+    public function update(Request $request, string $id)
+    {
+        $account = Account::find($id);
+
+        if (!$account) return throw new AccountException("The account does not exist", 404);
+        
+        $validator = Validator::make($request->all(), [
+            'firstname' => ['required', 'max:255'],
+            'lastname' => ['required', 'max:255'],
+            'username' => ['required', 'max:255', Rule::unique('accounts')->ignore($account->id)],
+            'email' => ['required', 'email', 'max:255', Rule::unique('accounts')->ignore($account->id)],
+            'password' => ['required', 'min:8', 'max:255'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $account->update($request->all());
+        
         return response()->json([
             'message' => "Account details has been updated.",
             'account' => $account
         ], 200);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Account $account)
     {
         $account = Account::find($id);
 
-        is_null($account) ? throw new AccountResponseException("Account does not exist.", 404) : $account->delete();
+        is_null($account) ? throw new AccountException("Account does not exist.", 404) : $account->delete();
 
         return response()->json([ 'message' => "Account deleted." ], 200);
     }

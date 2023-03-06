@@ -22,6 +22,10 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::apiResource('accounts', AccountController::class);
 
+// Route::group(['middleware' => ['api']], function() {
+//     Route::apiResource('accounts', AccountController::class);
+// });
+
 Route::fallback(function() {
     return response()->json([
         'message' => 'Page not found. Bye.'

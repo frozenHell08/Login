@@ -11,7 +11,7 @@ class UpdateAccountRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,11 @@ class UpdateAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'firstname' => ['required', 'max:255'],
+            'lastname' => ['required', 'max:255'],
+            'username' => ['required', 'max:255', 'unique:accounts'],
+            'email' => ['required', 'email', 'max:255', 'unique:accounts'],
+            'password' => ['required', 'min:8', 'max:255'],
         ];
     }
 }
